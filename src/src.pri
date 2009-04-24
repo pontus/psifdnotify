@@ -440,11 +440,14 @@ psi_plugins {
 }
 
 dbus {
-	HEADERS += 	$$PWD/dbus.h
+	HEADERS += 	$$PWD/dbus.h 
 	SOURCES += 	$$PWD/dbus.cpp
-	SOURCES += $$PWD/activeprofiles_dbus.cpp
+	SOURCES += $$PWD/activeprofiles_dbus.cpp 
 	DEFINES += USE_DBUS
 	CONFIG += qdbus
+
+	HEADERS += 	$$PWD/psifdnotify.h
+	SOURCES +=	$$PWD/psifdnotify.cpp 
 }
 
 win32:!dbus {
