@@ -30,6 +30,7 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
+#include <QDBusVariant>
 #include "common.h"
 #include "psiaccount.h"
 #include "avatars.h"
@@ -46,23 +47,6 @@ PsiFdnotify::PsiFdnotify() : QObject(QCoreApplication::instance()), interface("o
 									      "/org/freedesktop/Notifications",
 									      "org.freedesktop.Notifications")
 {
-	// Initialize all notifications
-	QStringList nots;
-	nots << QObject::tr("Contact becomes Available");
-	nots << QObject::tr("Contact becomes Unavailable");
-	nots << QObject::tr("Contact changes Status");
-	nots << QObject::tr("Incoming Message");
-	nots << QObject::tr("Incoming Headline");
-	nots << QObject::tr("Incoming File");
-
-	// Initialize default notifications
-	QStringList defaults;
-	defaults << QObject::tr("Contact becomes Available");
-	defaults << QObject::tr("Incoming Message");
-	defaults << QObject::tr("Incoming Headline");
-	defaults << QObject::tr("Incoming File");
-
-	serverLives = false;
 	setup();
 }
 
@@ -89,6 +73,51 @@ bool PsiFdnotify::setup()
 
   return true;
 }
+
+
+
+
+
+
+
+/**
+ * Requests the global PsiFdnotify instance.
+ * If PsiFdnotify wasn't initialized yet, it is initialized.
+ *
+ * \see Fdnotify()
+ * \return A pointer to the PsiFdnotify instance
+ */
+QList<QVariant> PsiFdnotify::pixmapToIconString(QPixmap p) 
+{
+
+	QList<QVariant> r;
+	QImage i = p.toImage().scaled(30, 30);
+
+	r.append(i.width());
+	r.append(i.height());
+	r.append(i.bytesPerLine());
+	r.append(i.hasAlphaChannel());
+	r.append(i.depth());
+
+	// QList<uchar> l;
+	QByteArray l;
+
+	for (int j = 0; j<i.height(); j++) {
+	  uchar* line = i.scanLine(j);
+ 
+	  for (int k = 0; k<i.bytesPerLine(); k++) {
+	    
+	    l.append(line[k]);
+	  }
+	}
+
+	r.append(l);
+
+	return r;
+}
+
+
+
 
 
 /**
@@ -121,12 +150,14 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
         if (!serverLives)
 	  setup();
 
+	QString category("im");
 
 	QString name;
 	QString title, desc, contact;
 	QString statusTxt = status2txt(makeSTATUS(r.status()));
 	QString statusMsg = r.status().status();
 	QPixmap icon = account->avatarFactory()->getAvatar(jid.bare());
+
 	if (uli) {
 		contact = uli->name();
 	}
@@ -145,33 +176,34 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 
 	switch(type) {
 		case PsiPopup::AlertOnline:
-			name = QObject::tr("Contact becomes Available");
-			title = QString("%1 (%2)").arg(contact).arg(statusTxt);
+		        category = QString("presence.online");
+			name = QObject::tr("Contact becomes Available: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
 			//icon = PsiIconset::instance()->statusPQString(jid, r.status());
 			break;
 		case PsiPopup::AlertOffline:
-			name = QObject::tr("Contact becomes Unavailable");
-			title = QString("%1 (%2)").arg(contact).arg(statusTxt);
+		        category = QString("presence.offline");
+			name = QObject::tr("Contact becomes Unavailable: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
 			//icon = PsiIconset::instance()->statusPQString(jid, r.status());
 			break;
 		case PsiPopup::AlertStatusChange:
-			name = QObject::tr("Contact changes Status");
-			title = QString("%1 (%2)").arg(contact).arg(statusTxt);
+		        category = QString("presence");
+			name = QObject::tr("Contact changes Status: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
 			//icon = PsiIconset::instance()->statusPQString(jid, r.status());
 			break;
 		case PsiPopup::AlertMessage: {
-			name = QObject::tr("Incoming Message");
-			title = QObject::tr("%1 says:").arg(contact);
+		        category = QString("im.received");
+			name = QObject::tr("Incoming Message: %1 says:").arg(contact);
 			const Message* jmessage = &((MessageEvent *)event)->message();
 			desc = jmessage->body();
 			//icon = IconsetFactory::iconPQString("psi/message");
 			break;
 		}
 		case PsiPopup::AlertChat: {
-			name = QObject::tr("Incoming Message");
+		        category = QString("im.received");
+			name = QObject::tr("Incoming Message from %1").arg(contact);
 			const Message* jmessage = &((MessageEvent *)event)->message();
 			desc = jmessage->body();
 			//icon = IconsetFactory::iconPQString("psi/start-chat");
@@ -195,23 +227,27 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 			break;
 	}
 
-	// Notify Fdnotify
-	//NotificationContext* context = new NotificationContext(account, jid);
-	// gn_->notify(name, title, desc, icon, false, this, SLOT(notificationClicked(void*)), SLOT(notificationTimedOut(void*)), context);
-
 	
+	QMap<QString,QVariant> hints;
+	QStringList actions;
 	QDBusMessage reply;
+
+	hints.insert("category", category);
+	hints.insert("urgency", qVariantFromValue<uchar>(1));
+
+	if (!icon.isNull())
+	  hints.insert("icon_data", pixmapToIconString(icon));
 
 	reply = interface.call("Notify",
 			       QObject::tr("Psi"),
-			       0,
+			       (uint) 0,
 			       "",
 			       name,
 			       desc,
-			       QVariant(),
-			       QVariant(),
-			       0);
-
+			       actions,
+			       hints,
+			       -1);
+	
 }
 
 void PsiFdnotify::notificationClicked(void* c)

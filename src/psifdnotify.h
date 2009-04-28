@@ -59,6 +59,8 @@ private:
 	PsiFdnotify();
 	bool setup();
 	
+	QList<QVariant> pixmapToIconString(QPixmap p);
+
 	bool serverLives;
 	static PsiFdnotify* instance_;
 	QDBusInterface interface;
