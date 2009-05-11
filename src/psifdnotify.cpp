@@ -39,7 +39,7 @@
 #include "psifdnotify.h"
 #include "psievent.h"
 #include "userlist.h"
-Q_DECLARE_METATYPE(iconStruct)
+
 
 /**
  * (Private) constructor of the PsiFdnotify.

@@ -31,6 +31,7 @@
 
 #include "psipopup.h"
 #include <QDBusInterface>
+#include <QImage>
 
 class Fdnotify;
 class PsiAccount;
@@ -59,11 +60,18 @@ private:
 	PsiFdnotify();
 	bool setup();
 	
-	QList<QVariant> pixmapToIconString(QPixmap p);
-
 	bool serverLives;
 	static PsiFdnotify* instance_;
 	QDBusInterface interface;
 };
+
+
+struct iconStruct
+{
+  QImage i;
+};
+
+Q_DECLARE_METATYPE(iconStruct)
+
 
 #endif
