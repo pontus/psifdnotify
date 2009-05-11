@@ -31,13 +31,15 @@
 #include <QDBusConnectionInterface>
 #include <QDBusMessage>
 #include <QDBusVariant>
+#include <QtDBus>
+#include <QDBusArgument>
 #include "common.h"
 #include "psiaccount.h"
 #include "avatars.h"
 #include "psifdnotify.h"
 #include "psievent.h"
 #include "userlist.h"
-
+Q_DECLARE_METATYPE(iconStruct)
 
 /**
  * (Private) constructor of the PsiFdnotify.
@@ -69,52 +71,56 @@ bool PsiFdnotify::setup()
 
   if (reply.type() == QDBusMessage::MethodCallMessage)
     serverLives = true;
-    
 
+  qDBusRegisterMetaType<iconStruct>();
   return true;
+
+
 }
 
 
 
-
-
-
-
-/**
- * Requests the global PsiFdnotify instance.
- * If PsiFdnotify wasn't initialized yet, it is initialized.
- *
- * \see Fdnotify()
- * \return A pointer to the PsiFdnotify instance
- */
-QList<QVariant> PsiFdnotify::pixmapToIconString(QPixmap p) 
+QDBusArgument &operator<<(QDBusArgument &r, const iconStruct &mystruct)
 {
 
-	QList<QVariant> r;
-	QImage i = p.toImage().scaled(30, 30);
+        r.beginStructure();
+        r << mystruct.i.width();
+        r << mystruct.i.height();
+        r << mystruct.i.bytesPerLine();
+        r << mystruct.i.hasAlphaChannel();
+        r << mystruct.i.depth();
+        r << 4;
 
-	r.append(i.width());
-	r.append(i.height());
-	r.append(i.bytesPerLine());
-	r.append(i.hasAlphaChannel());
-	r.append(i.depth());
-
-	// QList<uchar> l;
-	QByteArray l;
-
-	for (int j = 0; j<i.height(); j++) {
-	  uchar* line = i.scanLine(j);
+        QByteArray l;
+        
+        for (int j = 0; j < mystruct.i.height(); j++) {
+          QRgb* line = (QRgb*) mystruct.i.scanLine(j);
  
-	  for (int k = 0; k<i.bytesPerLine(); k++) {
-	    
-	    l.append(line[k]);
-	  }
-	}
+          for (int k = 0; k < mystruct.i.width(); k++) {
+            
+            l.append(qRed(line[k]));
+            l.append(qGreen(line[k]));
+            l.append(qBlue(line[k]));
+            l.append(qAlpha(line[k]));
+          }
+        }
+        
+        r << l;
+        r.endStructure();
 
-	r.append(l);
-
-	return r;
+        return r;
 }
+
+
+
+ // Retrieve the MyStructure data from the D-BUS argument
+ const QDBusArgument &operator>>(const QDBusArgument &argument, iconStruct &mystruct)
+ {
+     return argument;
+ }
+
+
+
 
 
 
@@ -226,18 +232,23 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 		default:
 			break;
 	}
-
 	
 	QMap<QString,QVariant> hints;
 	QStringList actions;
 	QDBusMessage reply;
-
+	
 	hints.insert("category", category);
 	hints.insert("urgency", qVariantFromValue<uchar>(1));
 
-	if (!icon.isNull())
-	  hints.insert("icon_data", pixmapToIconString(icon));
+	if (!icon.isNull()) {
+	  iconStruct p;
+	  p.i = icon.toImage(); //.scaled(5,5);
 
+	  QVariant v;
+	  v.setValue(p);
+	  hints.insert("icon_data", v); 
+	}
+		
 	reply = interface.call("Notify",
 			       QObject::tr("Psi"),
 			       (uint) 0,
