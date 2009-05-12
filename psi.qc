@@ -3,6 +3,7 @@
   <profile>psi.pro</profile>
   <sharename>psi</sharename>
   <moddir>qcm</moddir>
+  <libdir/>
   <datadir/>
   <dep type='qt4'>
     <required/>
@@ -23,11 +24,11 @@
   </dep>
   <dep type='qdbus'/>
   <dep type='growl'/>
-  <dep type='sparkle'/>
+  <!--<dep type='sparkle'/>-->
   <dep type='xss'/>
   <dep type='ghbnr'/>
   <dep type='aspell'/>
-  <dep type='plugins'/>
+  <!--<dep type='plugins'/>-->
   <dep type='debug'>
     <required/>
   </dep>

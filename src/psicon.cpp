@@ -90,7 +90,7 @@
 #include "desktoputil.h"
 #include "tabmanager.h"
 #include "capsmanager.h"
-#include "avcall/jinglertp.h"
+#include "avcall/avcall.h"
 #include "avcall/calldlg.h"
 
 
@@ -584,13 +584,13 @@ bool PsiCon::init()
 
 	DesktopUtil::setUrlHandler("xmpp", this, "doOpenUri");
 
-	if(JingleRtpManager::isSupported()) {
+	if(AvCallManager::isSupported()) {
 		options_avcall_update();
-		JingleRtpManager::setAudioOutDevice(PsiOptions::instance()->getOption("options.media.devices.audio-output").toString());
-		JingleRtpManager::setAudioInDevice(PsiOptions::instance()->getOption("options.media.devices.audio-input").toString());
-		JingleRtpManager::setVideoInDevice(PsiOptions::instance()->getOption("options.media.devices.video-input").toString());
-		JingleRtpManager::setBasePort(PsiOptions::instance()->getOption("options.p2p.bytestreams.listen-port").toInt());
-		JingleRtpManager::setExternalAddress(PsiOptions::instance()->getOption("options.p2p.bytestreams.external-address").toString());
+		AvCallManager::setAudioOutDevice(PsiOptions::instance()->getOption("options.media.devices.audio-output").toString());
+		AvCallManager::setAudioInDevice(PsiOptions::instance()->getOption("options.media.devices.audio-input").toString());
+		AvCallManager::setVideoInDevice(PsiOptions::instance()->getOption("options.media.devices.video-input").toString());
+		AvCallManager::setBasePort(PsiOptions::instance()->getOption("options.p2p.bytestreams.listen-port").toInt());
+		AvCallManager::setExternalAddress(PsiOptions::instance()->getOption("options.p2p.bytestreams.external-address").toString());
 	}
 
 	return true;
@@ -831,9 +831,9 @@ AccountsComboBox *PsiCon::accountsComboBox(QWidget *parent, bool online_only)
 	return acb;
 }
 
-void PsiCon::createAccount(const QString &name, const Jid &j, const QString &pass, bool opt_host, const QString &host, int port, bool legacy_ssl_probe, UserAccount::SSLFlag ssl, QString proxy)
+void PsiCon::createAccount(const QString &name, const Jid &j, const QString &pass, bool opt_host, const QString &host, int port, bool legacy_ssl_probe, UserAccount::SSLFlag ssl, QString proxy, const QString &tlsOverrideDomain, const QByteArray &tlsOverrideCert)
 {
-	d->contactList->createAccount(name, j, pass, opt_host, host, port, legacy_ssl_probe, ssl, proxy);
+	d->contactList->createAccount(name, j, pass, opt_host, host, port, legacy_ssl_probe, ssl, proxy, tlsOverrideDomain, tlsOverrideCert);
 }
 
 PsiAccount *PsiCon::createAccount(const UserAccount& acc)
@@ -1107,12 +1107,12 @@ void PsiCon::slotApplyOptions()
 
 	updateS5BServerAddresses();
 
-	if(JingleRtpManager::isSupported()) {
-		JingleRtpManager::setAudioOutDevice(PsiOptions::instance()->getOption("options.media.devices.audio-output").toString());
-		JingleRtpManager::setAudioInDevice(PsiOptions::instance()->getOption("options.media.devices.audio-input").toString());
-		JingleRtpManager::setVideoInDevice(PsiOptions::instance()->getOption("options.media.devices.video-input").toString());
-		JingleRtpManager::setBasePort(PsiOptions::instance()->getOption("options.p2p.bytestreams.listen-port").toInt());
-		JingleRtpManager::setExternalAddress(PsiOptions::instance()->getOption("options.p2p.bytestreams.external-address").toString());
+	if(AvCallManager::isSupported()) {
+		AvCallManager::setAudioOutDevice(PsiOptions::instance()->getOption("options.media.devices.audio-output").toString());
+		AvCallManager::setAudioInDevice(PsiOptions::instance()->getOption("options.media.devices.audio-input").toString());
+		AvCallManager::setVideoInDevice(PsiOptions::instance()->getOption("options.media.devices.video-input").toString());
+		AvCallManager::setBasePort(PsiOptions::instance()->getOption("options.p2p.bytestreams.listen-port").toInt());
+		AvCallManager::setExternalAddress(PsiOptions::instance()->getOption("options.p2p.bytestreams.external-address").toString());
 	}
 
 	// mainwin stuff
@@ -1309,18 +1309,23 @@ void PsiCon::processEvent(PsiEvent *e, ActivationType activationType)
 		return;
 	}
 
-	if(e->type() == PsiEvent::AvCall) {
+	if(e->type() == PsiEvent::AvCallType) {
 		AvCallEvent *ae = (AvCallEvent *)e;
-		JingleRtpSession *sess = ae->takeJingleRtpSession();
+		AvCall *sess = ae->takeAvCall();
 		e->account()->eventQueue()->dequeue(e);
 		e->account()->queueChanged();
 		e->account()->cpUpdate(*u);
 		if(sess) {
-			//FileRequestDlg *w = new FileRequestDlg(fe->timeStamp(), ft, e->account());
-			CallDlg *w = new CallDlg(e->account(), 0);
-			w->setAttribute(Qt::WA_DeleteOnClose);
-			w->setIncoming(sess);
-			bringToFront(w);
+			if(!sess->jid().isEmpty()) {
+				CallDlg *w = new CallDlg(e->account(), 0);
+				w->setAttribute(Qt::WA_DeleteOnClose);
+				w->setIncoming(sess);
+				bringToFront(w);
+			}
+			else {
+				QMessageBox::information(0, tr("Call ended"), tr("Other party canceled call."));
+				delete sess;
+			}
 		}
 		return;
 	}
@@ -1474,7 +1479,7 @@ void PsiCon::promptUserToCreateAccount()
 		AccountRegDlg w(proxy());
 		int n = w.exec();
 		if (n == QDialog::Accepted) {
-			contactList()->createAccount(w.jid().node(),w.jid(),w.pass(),w.useHost(),w.host(),w.port(),w.legacySSLProbe(),w.ssl(),w.proxy(),false);
+			contactList()->createAccount(w.jid().node(),w.jid(),w.pass(),w.useHost(),w.host(),w.port(),w.legacySSLProbe(),w.ssl(),w.proxy(),w.tlsOverrideDomain(), w.tlsOverrideCert(), false);
 		}
 	}
 }

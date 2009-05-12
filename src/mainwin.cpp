@@ -63,10 +63,23 @@
 
 #include "mainwin_p.h"
 
-#include "avcall/jinglertp.h"
+#include "psimedia/psimedia.h"
+#include "avcall/avcall.h"
 
 using namespace XMPP;
 
+// FIXME: this is a really corny way of getting the GStreamer version...
+QString extract_gst_version(const QString &in)
+{
+	int start = in.indexOf("GStreamer ");
+	if(start == -1)
+		return QString();
+	start += 10;
+	int end = in.indexOf(",", start);
+	if(end == -1)
+		return QString();
+	return in.mid(start, end - start);
+}
 
 //----------------------------------------------------------------------------
 // MainWin::Private
@@ -384,6 +397,10 @@ MainWin::MainWin(bool _onTop, bool _asTool, PsiCon* psi, const char* name)
 	helpMenu->insertItem(tr("Diagnostics"), diagMenu);
 	d->getAction("help_diag_qcaplugin")->addTo (diagMenu);
 	d->getAction("help_diag_qcakeystore")->addTo (diagMenu);
+	if(AvCallManager::isSupported()) {
+		helpMenu->insertSeparator();
+		d->getAction("help_about_psimedia")->addTo (helpMenu);
+	}
 #else
 	if (!PsiOptions::instance()->getOption("options.ui.contactlist.show-menubar").toBool())  {
 		mainMenuBar()->hide();
@@ -470,6 +487,7 @@ void MainWin::registerAction( IconAction* action )
 		{ "help_report_bug",  activated, this, SLOT( actBugReportActivated() ) },
 		{ "help_about",       activated, this, SLOT( actAboutActivated() ) },
 		{ "help_about_qt",    activated, this, SLOT( actAboutQtActivated() ) },
+		{ "help_about_psimedia",   activated, this, SLOT( actAboutPsiMediaActivated() ) },
 		{ "help_diag_qcaplugin",   activated, this, SLOT( actDiagQCAPluginActivated() ) },
 		{ "help_diag_qcakeystore", activated, this, SLOT( actDiagQCAKeyStoreActivated() ) },
 
@@ -703,6 +721,9 @@ void MainWin::buildOptionsMenu()
 	        << "help_about"
 	        << "help_about_qt";
 
+	if(AvCallManager::isSupported())
+		actions << "help_about_psimedia";
+
 	d->updateMenu(actions, helpMenu);
 
 	buildGeneralMenu( d->optionsMenu );
@@ -820,6 +841,56 @@ void MainWin::actTipActivated ()
 void MainWin::actAboutQtActivated ()
 {
 	QMessageBox::aboutQt(this);
+}
+
+void MainWin::actAboutPsiMediaActivated ()
+{
+	QString creditText = PsiMedia::creditText();
+	QString gstVersion = extract_gst_version(creditText);
+
+	QString str;
+	QPixmap pix;
+	if(!gstVersion.isEmpty())
+	{
+		str = tr(
+			"This application uses GStreamer %1, a comprehensive "
+			"open-source and cross-platform multimedia framework."
+			"  For more information, see "
+			"<a href=\"http://www.gstreamer.net/\">http://www.gstreamer.net/</a>").arg(gstVersion);
+		pix = IconsetFactory::icon("psi/gst_logo").pixmap();
+	}
+	else
+		str = creditText;
+
+	QDialog aboutGst;
+	QVBoxLayout *vb = new QVBoxLayout(&aboutGst);
+	aboutGst.setWindowTitle(tr("About GStreamer"));
+	QHBoxLayout *hb = new QHBoxLayout;
+	vb->addLayout(hb);
+	if(!pix.isNull())
+	{
+		QLabel *la = new QLabel(&aboutGst);
+		la->setSizePolicy(QSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed));
+		la->setPixmap(pix);
+		hb->addWidget(la);
+	}
+	QLabel *lb = new QLabel(&aboutGst);
+	lb->setText(str);
+	lb->setTextFormat(Qt::RichText);
+	lb->setWordWrap(true);
+	lb->setOpenExternalLinks(true);
+	hb->addWidget(lb);
+	QDialogButtonBox *buttonBox = new QDialogButtonBox(&aboutGst);
+	buttonBox->addButton(QDialogButtonBox::Ok);
+	aboutGst.connect(buttonBox, SIGNAL(accepted()), SLOT(accept()));
+	vb->addWidget(buttonBox);
+	if(!pix.isNull())
+	{
+		int w = pix.width() * 4;
+		aboutGst.resize(w, aboutGst.heightForWidth(w));
+	}
+	aboutGst.exec();
+	//QMessageBox::about(this, tr("About GStreamer"), str);
 }
 
 void MainWin::actDiagQCAPluginActivated()
@@ -1396,8 +1467,8 @@ void MainWin::showNoFocus()
 
 void MainWin::avcallConfig()
 {
-	if (JingleRtpManager::isSupported())
-		JingleRtpManager::config();
+	if (AvCallManager::isSupported())
+		AvCallManager::config();
 }
 
 //#endif
