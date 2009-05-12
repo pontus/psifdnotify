@@ -54,7 +54,6 @@ public:
 
 public slots:
 	void notificationClicked(void*);
-	void notificationTimedOut(void*);
 
 private:
 	PsiFdnotify();
