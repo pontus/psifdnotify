@@ -83,32 +83,34 @@ bool PsiFdnotify::setup()
 QDBusArgument &operator<<(QDBusArgument &r, const iconStruct &mystruct)
 {
 
-        r.beginStructure();
-        r << mystruct.i.width();
-        r << mystruct.i.height();
-        r << mystruct.i.bytesPerLine();
-        r << mystruct.i.hasAlphaChannel();
-        r << mystruct.i.depth();
-        r << 4;
+  QImage i = mystruct.i.convertToFormat(QImage::Format_ARGB32);
 
-        QByteArray l;
-        
-        for (int j = 0; j < mystruct.i.height(); j++) {
-          QRgb* line = (QRgb*) mystruct.i.scanLine(j);
- 
-          for (int k = 0; k < mystruct.i.width(); k++) {
-            
-            l.append(qRed(line[k]));
-            l.append(qGreen(line[k]));
-            l.append(qBlue(line[k]));
-            l.append(qAlpha(line[k]));
-          }
-        }
-        
-        r << l;
-        r.endStructure();
-
-        return r;
+  r.beginStructure();
+  r << i.width();
+  r << i.height();
+  r << i.bytesPerLine();
+  r << i.hasAlphaChannel();
+  r << 8; // i.depth();
+  r << 4;
+  
+  QByteArray l;
+  
+  for (int j = 0; j < i.height(); j++) {
+    QRgb* line = (QRgb*) i.scanLine(j);
+    
+    for (int k = 0; k < i.width(); k++) {
+      
+      l.append(qRed(line[k]));
+      l.append(qGreen(line[k]));
+      l.append(qBlue(line[k]));
+      l.append(qAlpha(line[k]));
+    }
+  }
+  
+  r << l;
+  r.endStructure();
+  
+  return r;
 }
 
 
@@ -116,6 +118,8 @@ QDBusArgument &operator<<(QDBusArgument &r, const iconStruct &mystruct)
  // Retrieve the MyStructure data from the D-BUS argument
  const QDBusArgument &operator>>(const QDBusArgument &argument, iconStruct &mystruct)
  {
+   // Create a dummy image for mystruct
+   mystruct.i = QImage();
      return argument;
  }
 
@@ -242,7 +246,7 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 
 	if (!icon.isNull()) {
 	  iconStruct p;
-	  p.i = icon.toImage(); //.scaled(5,5);
+	  p.i = icon.toImage(); 
 
 	  QVariant v;
 	  v.setValue(p);
