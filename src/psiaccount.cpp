@@ -1978,15 +1978,15 @@ void PsiAccount::client_resourceAvailable(const Jid &j, const Resource &r)
 		     PsiOptions::instance()->getOption("options.ui.notifications.passive-popups.status.online").toBool()) || 
 		    (popupType == PopupStatusChange && 
 		     PsiOptions::instance()->getOption("options.ui.notifications.passive-popups.status.other-changes").toBool())) {
+#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
+		        PsiGrowlNotifier::instance()->popup(this, pt, j, r, u);
+#elif defined(USE_DBUS)
+		        PsiFdnotify::instance()->popup(this, pt, j, r, u);
+#else
 			PsiPopup *popup = new PsiPopup(pt, this);
 			popup->setData(j, r, u);
+#endif
 		}
-#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
-		PsiGrowlNotifier::instance()->popup(this, pt, j, r, u);
-#endif
-#if defined(USE_DBUS)
-		PsiFdnotify::instance()->popup(this, pt, j, r, u);
-#endif
 	}
 	else if ( !notifyOnlineOk )
 		d->userCounter++;
@@ -2068,15 +2068,15 @@ void PsiAccount::client_resourceUnavailable(const Jid &j, const Resource &r)
 		UserListItem *u = findFirstRelevant(j);
 
 		if (PsiOptions::instance()->getOption("options.ui.notifications.passive-popups.status.offline").toBool()) {
+#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
+		        PsiGrowlNotifier::instance()->popup(this, PsiPopup::AlertOffline, j, r, u);
+#elif defined(USE_DBUS)
+		        PsiFdnotify::instance()->popup(this, PsiPopup::AlertOffline, j, r, u);
+#else
 			PsiPopup *popup = new PsiPopup(PsiPopup::AlertOffline, this);
 			popup->setData(j, r, u);
+#endif
 		}
-#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
-		PsiGrowlNotifier::instance()->popup(this, PsiPopup::AlertOffline, j, r, u);
-#endif
-#if defined(USE_DBUS)
-		PsiFdnotify::instance()->popup(this, PsiPopup::AlertOffline, j, r, u);
-#endif
 	}
 }
 
@@ -4073,15 +4073,15 @@ void PsiAccount::handleEvent(PsiEvent* e, ActivationType activationType)
 		    (popupType == PsiPopup::AlertFile     && PsiOptions::instance()->getOption("options.ui.notifications.passive-popups.incoming-file-transfer").toBool()) ||
 		    (popupType == PsiPopup::AlertAvCall   && PsiOptions::instance()->getOption("options.ui.notifications.passive-popups.incoming-message").toBool()))
 		{
+#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
+		        PsiGrowlNotifier::instance()->popup(this, popupType, j, r, u, e);
+#elif defined(USE_DBUS)
+		        PsiFdnotify::instance()->popup(this, popupType, j, r, u, e);
+#else
 			PsiPopup *popup = new PsiPopup(popupType, this);
 			popup->setData(j, r, u, e);
+#endif
 		}
-#if defined(Q_WS_MAC) && defined(HAVE_GROWL)
-		PsiGrowlNotifier::instance()->popup(this, popupType, j, r, u, e);
-#endif
-#if defined(USE_DBUS)
-		PsiFdnotify::instance()->popup(this, popupType, j, r, u, e);
-#endif
 
 		emit startBounce();
 	}
