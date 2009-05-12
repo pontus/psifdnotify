@@ -38,6 +38,7 @@
 #include "avatars.h"
 #include "psifdnotify.h"
 #include "psievent.h"
+#include "psipopup.h"
 #include "userlist.h"
 
 
@@ -252,7 +253,7 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 	  v.setValue(p);
 	  hints.insert("icon_data", v); 
 	}
-		
+
 	reply = interface.call("Notify",
 			       QObject::tr("Psi"),
 			       (uint) 0,
@@ -262,6 +263,13 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 			       actions,
 			       hints,
 			       -1);
+
+
+	if (reply.type() != QDBusMessage::ReplyMessage)
+	  {
+	    PsiPopup *popup = new PsiPopup(type, account);
+	    popup->setData(jid, r, uli);
+	  }	
 	
 }
 
@@ -269,12 +277,6 @@ void PsiFdnotify::notificationClicked(void* c)
 {
   //	NotificationContext* context = (NotificationContext*) c;
   //	context->account()->actionDefault(context->jid());
-  //	delete context;
-}
-
-void PsiFdnotify::notificationTimedOut(void* c)
-{
-  //	NotificationContext* context = (NotificationContext*) c;
   //	delete context;
 }
 
