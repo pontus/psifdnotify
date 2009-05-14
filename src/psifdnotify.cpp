@@ -170,12 +170,7 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 	QPixmap icon = account->avatarFactory()->getAvatar(jid.bare());
 
 	if (icon.isNull())
-	  {
-	    const PsiIcon* logo = IconsetFactory::iconPtr("psi/psiMac");
-
-	    if (logo)
-	      icon = logo->pixmap();
-	  }
+	    icon = IconsetFactory::iconPixmap("psi/logo_128");
 
 	if (uli) {
 		contact = uli->name();
