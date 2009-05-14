@@ -169,6 +169,14 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 	QString statusMsg = r.status().status();
 	QPixmap icon = account->avatarFactory()->getAvatar(jid.bare());
 
+	if (icon.isNull())
+	  {
+	    const PsiIcon* logo = IconsetFactory::iconPtr("psi/psiMac");
+
+	    if (logo)
+	      icon = logo->pixmap();
+	  }
+
 	if (uli) {
 		contact = uli->name();
 	}
@@ -190,26 +198,22 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 		        category = QString("presence.online");
 			name = QObject::tr("Contact becomes Available: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
-			//icon = Iconset::instance()->statusPQString(jid, r.status());
 			break;
 		case PsiPopup::AlertOffline:
 		        category = QString("presence.offline");
 			name = QObject::tr("Contact becomes Unavailable: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
-			//icon = PsiIconset::instance()->statusPQString(jid, r.status());
 			break;
 		case PsiPopup::AlertStatusChange:
 		        category = QString("presence");
 			name = QObject::tr("Contact changes Status: %1 (%2)").arg(contact).arg(statusTxt);
 			desc = statusMsg;
-			//icon = PsiIconset::instance()->statusPQString(jid, r.status());
 			break;
-		case PsiPopup::AlertMessage: {
+	        case PsiPopup::AlertMessage: {
 		        category = QString("im.received");
 			name = QObject::tr("Incoming Message: %1 says:").arg(contact);
 			const Message* jmessage = &((MessageEvent *)event)->message();
 			desc = jmessage->body();
-			//icon = IconsetFactory::iconPQString("psi/message");
 			break;
 		}
 		case PsiPopup::AlertChat: {
@@ -217,9 +221,6 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 			name = QObject::tr("Incoming Message from %1").arg(contact);
 			const Message* jmessage = &((MessageEvent *)event)->message();
 			desc = jmessage->body();
-			
-			if (icon.isNull())
-			  icon = IconsetFactory::iconPtr("psi/start-chat")->pixmap();
 			break;
 		}
 		case PsiPopup::AlertHeadline: {
@@ -228,17 +229,12 @@ void PsiFdnotify::popup(PsiAccount* account, PsiPopup::PopupType type, const Jid
 			if ( !jmessage->subject().isEmpty())
 				title = jmessage->subject();
 			desc = jmessage->body();
-			
-			if (icon.isNull())
-			  icon = IconsetFactory::iconPtr("psi/headline")->pixmap();
 			break;
 		}
 		case PsiPopup::AlertFile:
 			name = QObject::tr("Incoming File");
 			desc = QObject::tr("[Incoming File]");
 
-			if (icon.isNull())
-			  icon = IconsetFactory::iconPtr("psi/headline")->pixmap();
 			break;
 		default:
 			break;
